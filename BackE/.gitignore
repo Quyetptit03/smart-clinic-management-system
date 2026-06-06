@@ -1,0 +1,25 @@
+# Thư mục build
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Logs
+*.log
+build.log
+.md
+db_update.log
+
+# Cấu hình cá nhân
+.config/
+rules.antigravityrules
+
+# Thư mục Tool/OS
+.DS_Store
+thumbs.db
+*.md
