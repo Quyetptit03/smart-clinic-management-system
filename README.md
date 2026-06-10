@@ -139,7 +139,7 @@ Ví dụ cấu hình mặc định:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=CaptianSon;Database=ERMSystemDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
+    "DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=SmartClinicManagementSystemDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
   },
   "Jwt": {
     "Key": "ERMSystem_JWT_Secret_Key_2026_32c",

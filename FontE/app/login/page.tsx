@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { Card } from '@/components/ui/Card';
 import toast from 'react-hot-toast';
@@ -164,6 +165,13 @@ export default function LoginPage() {
                 'Sign In to Dashboard'
               )}
             </button>
+
+            <p className="text-center text-sm text-gray-500 pt-2">
+              Don't have an account?{' '}
+              <Link href="/register" className="font-bold text-blue-600 hover:text-blue-500 transition-colors">
+                Create one
+              </Link>
+            </p>
           </form>
         )}
       </Card>
