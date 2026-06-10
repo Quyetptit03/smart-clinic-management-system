@@ -13,6 +13,16 @@ export const authService = {
     return response.data;
   },
 
+  register: async (username: string, password: string, role: string) => {
+    const response = await api.post('/Auth/register', { username, password, role });
+    const token = response.data?.token;
+    if (!token) {
+      throw new Error('Registration failed: no token received from server.');
+    }
+    localStorage.setItem(TOKEN_KEY, token);
+    return response.data;
+  },
+
   logout: () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(TOKEN_KEY);
