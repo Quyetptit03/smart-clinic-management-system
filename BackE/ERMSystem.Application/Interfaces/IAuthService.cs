@@ -7,5 +7,6 @@ namespace ERMSystem.Application.Interfaces
     {
         Task<AuthResponseDto> RegisterAsync(RegisterDto registerDto);
         Task<AuthResponseDto> LoginAsync(LoginDto loginDto);
+        Task<AuthResponseDto> CreateUserAsync(CreateUserDto createUserDto);
     }
 }

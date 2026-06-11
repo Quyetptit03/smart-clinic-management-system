@@ -30,15 +30,35 @@ namespace ERMSystem.Infrastructure.Services
             if (userExists)
                 throw new InvalidOperationException($"Username '{username}' is already taken.");
 
-            if (!Array.Exists(AppRole.All, r => r == registerDto.Role))
-                throw new ArgumentException($"Invalid role '{registerDto.Role}'. Must be Admin, Doctor, or Receptionist.");
-
             var user = new AppUser
             {
                 Id = Guid.NewGuid(),
                 Username = username,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
-                Role = registerDto.Role
+                Role = AppRole.Receptionist
+            };
+
+            await _userRepository.AddAsync(user);
+
+            return BuildAuthResponse(user);
+        }
+
+        public async Task<AuthResponseDto> CreateUserAsync(CreateUserDto createUserDto)
+        {
+            var username = createUserDto.Username.Trim().ToLowerInvariant();
+            var userExists = await _userRepository.UsernameExistsAsync(username);
+            if (userExists)
+                throw new InvalidOperationException($"Username '{username}' is already taken.");
+
+            if (!Array.Exists(AppRole.All, r => r == createUserDto.Role))
+                throw new ArgumentException($"Invalid role '{createUserDto.Role}'. Must be Admin, Doctor, or Receptionist.");
+
+            var user = new AppUser
+            {
+                Id = Guid.NewGuid(),
+                Username = username,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(createUserDto.Password),
+                Role = createUserDto.Role
             };
 
             await _userRepository.AddAsync(user);
