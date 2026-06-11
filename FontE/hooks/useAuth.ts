@@ -36,7 +36,11 @@ export function useAuth() {
       router.push('/dashboard');
       return { success: true };
     } catch (error: any) {
-      const msg = error?.response?.data?.message || 'Invalid email or password';
+      const data = error?.response?.data;
+      const msg =
+        (typeof data === 'string' ? data : data?.message || data?.title) ||
+        error?.message ||
+        'Invalid username or password';
       toast.error(msg);
       return { success: false, error: msg };
     }

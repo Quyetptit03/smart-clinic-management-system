@@ -17,13 +17,15 @@ namespace ERMSystem.Infrastructure.Repositories
 
         public async Task<AppUser?> GetByUsernameAsync(string username)
         {
+            var normalized = username.Trim().ToLower();
             return await _context.AppUsers
-                .FirstOrDefaultAsync(u => u.Username == username);
+                .FirstOrDefaultAsync(u => u.Username.ToLower() == normalized);
         }
 
         public async Task<bool> UsernameExistsAsync(string username)
         {
-            return await _context.AppUsers.AnyAsync(u => u.Username == username);
+            var normalized = username.Trim().ToLower();
+            return await _context.AppUsers.AnyAsync(u => u.Username.ToLower() == normalized);
         }
 
         public async Task AddAsync(AppUser user)

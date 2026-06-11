@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5219/api";
+const configuredBackend = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5219";
+const BACKEND_URL = configuredBackend.endsWith("/api")
+  ? configuredBackend
+  : `${configuredBackend.replace(/\/$/, "")}/api`;
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
