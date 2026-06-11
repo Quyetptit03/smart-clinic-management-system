@@ -25,9 +25,10 @@ namespace ERMSystem.Infrastructure.Services
 
         public async Task<AuthResponseDto> RegisterAsync(RegisterDto registerDto)
         {
-            var userExists = await _userRepository.UsernameExistsAsync(registerDto.Username);
+            var username = registerDto.Username.Trim().ToLowerInvariant();
+            var userExists = await _userRepository.UsernameExistsAsync(username);
             if (userExists)
-                throw new InvalidOperationException($"Username '{registerDto.Username}' is already taken.");
+                throw new InvalidOperationException($"Username '{username}' is already taken.");
 
             if (!Array.Exists(AppRole.All, r => r == registerDto.Role))
                 throw new ArgumentException($"Invalid role '{registerDto.Role}'. Must be Admin, Doctor, or Receptionist.");
@@ -35,7 +36,7 @@ namespace ERMSystem.Infrastructure.Services
             var user = new AppUser
             {
                 Id = Guid.NewGuid(),
-                Username = registerDto.Username,
+                Username = username,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
                 Role = registerDto.Role
             };
@@ -47,7 +48,7 @@ namespace ERMSystem.Infrastructure.Services
 
         public async Task<AuthResponseDto> LoginAsync(LoginDto loginDto)
         {
-            var user = await _userRepository.GetByUsernameAsync(loginDto.Username);
+            var user = await _userRepository.GetByUsernameAsync(loginDto.Username.Trim());
             if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
                 throw new UnauthorizedAccessException("Invalid username or password.");
 

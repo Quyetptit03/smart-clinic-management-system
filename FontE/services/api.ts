@@ -1,8 +1,22 @@
 import axios from 'axios';
 
-// Create a configured axios instance
+const isAuthRequest = (url: string) =>
+  url.includes('/Auth/login') || url.includes('/Auth/register');
+
+const resolveApiBaseUrl = (): string => {
+  const configured = process.env.NEXT_PUBLIC_API_URL;
+  if (!configured) return '/api';
+
+  const trimmed = configured.replace(/\/$/, '');
+  if (trimmed.startsWith('http') && !trimmed.endsWith('/api')) {
+    return `${trimmed}/api`;
+  }
+  return trimmed;
+};
+
+// Use the Next.js /api proxy in dev; override with NEXT_PUBLIC_API_URL in production.
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5219/api',
+  baseURL: resolveApiBaseUrl(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -12,8 +26,9 @@ const api = axios.create({
 // Request interceptor to attach token
 api.interceptors.request.use(
   (config) => {
-    // Attach JWT token from localStorage
-    if (typeof window !== "undefined") {
+    const requestUrl = typeof config.url === 'string' ? config.url : '';
+
+    if (typeof window !== 'undefined' && !isAuthRequest(requestUrl)) {
       const token = localStorage.getItem('emr_auth_token');
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -31,12 +46,8 @@ api.interceptors.response.use(
     const originalRequest = error.config ?? {};
     const requestUrl = typeof originalRequest.url === 'string' ? originalRequest.url : '';
 
-    if (
-      error.response?.status === 401 &&
-      !requestUrl.includes('/api/Auth/login') &&
-      !requestUrl.includes('/api/Auth/register')
-    ) {
-      localStorage.removeItem("emr_auth_token")
+    if (error.response?.status === 401 && !isAuthRequest(requestUrl)) {
+      localStorage.removeItem('emr_auth_token')
       window.location.href = "/login"
     }
 

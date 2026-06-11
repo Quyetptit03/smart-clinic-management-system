@@ -1,6 +1,10 @@
+"use client";
+
 import Link from 'next/link';
+import { useAuth } from '@/hooks/useAuth';
 
 export function Sidebar() {
+  const { logout } = useAuth();
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: '📊' },
     { name: 'Patients', path: '/patients', icon: '👥' },
@@ -29,7 +33,11 @@ export function Sidebar() {
         ))}
       </nav>
       <div className="p-4 border-t border-gray-100">
-        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors">
+        <button
+          type="button"
+          onClick={logout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
+        >
           <span className="text-xl">🚪</span>
           <span className="font-medium">Logout</span>
         </button>
