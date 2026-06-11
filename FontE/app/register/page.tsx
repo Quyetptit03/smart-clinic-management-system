@@ -13,7 +13,6 @@ export default function RegisterPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState('Receptionist');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -26,7 +25,7 @@ export default function RegisterPage() {
 
     setIsSubmitting(true);
     try {
-      await authService.register(username, password, role);
+      await authService.register(username, password);
       toast.success('Account created successfully');
       router.push('/dashboard');
     } catch (error: any) {
@@ -88,20 +87,6 @@ export default function RegisterPage() {
               placeholder="Repeat your password"
               required
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1.5">Role</label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-4 focus:ring-cyan-500/20 focus:border-cyan-500 outline-none transition-all font-medium text-gray-800 shadow-sm bg-gray-50/50"
-              required
-            >
-              <option value="Admin">Admin</option>
-              <option value="Doctor">Doctor</option>
-              <option value="Receptionist">Receptionist</option>
-            </select>
           </div>
 
           <button
