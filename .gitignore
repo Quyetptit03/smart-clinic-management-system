@@ -7,6 +7,17 @@
 
 # dotenv files
 .env
+.env.*
+.env.local
+.env.*.local
+
+# .NET User Secrets (stored outside project at %APPDATA%\Microsoft\UserSecrets\<id>\secrets.json)
+# Included here as a reminder — never commit secrets.json to source control
+secrets.json
+
+# Local configuration overrides
+config.local.json
+appsettings.local.json
 
 # User-specific files
 *.rsuser

@@ -15,7 +15,15 @@ builder.Services.AddDbContext<ERMSystem.Infrastructure.Data.ApplicationDbContext
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // ── JWT Authentication ──────────────────────────────────────────────────────
-var jwtKey = builder.Configuration["Jwt:Key"]!;
+// JWT secret must come from environment variables or .NET User Secrets.
+// It must NEVER be stored in appsettings.json or committed to source control.
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    throw new InvalidOperationException(
+        "JWT signing key is not configured. " +
+        "Set the Jwt__Key environment variable, or run 'dotnet user-secrets set Jwt:Key <your-secret>' in the BackE/ERMSystem.API directory.");
+}
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
