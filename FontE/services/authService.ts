@@ -4,7 +4,7 @@ const TOKEN_KEY = 'emr_auth_token';
 
 export const authService = {
   login: async (username: string, password: string) => {
-    const response = await api.post('/Auth/login', { username, password });
+    const response = await api.post('/auth/login', { username, password });
     const token = response.data?.token;
     if (!token) {
       throw new Error('Authentication failed: no token received from server.');
@@ -14,7 +14,7 @@ export const authService = {
   },
 
   register: async (username: string, password: string) => {
-    const response = await api.post('/Auth/register', { username, password });
+    const response = await api.post('/auth/register', { username, password });
     const token = response.data?.token;
     if (!token) {
       throw new Error('Registration failed: no token received from server.');

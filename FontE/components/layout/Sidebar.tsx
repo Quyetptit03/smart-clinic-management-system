@@ -12,6 +12,7 @@ export function Sidebar() {
     { name: 'Appointments', path: '/appointments', icon: '📅', roles: 'Admin,Doctor,Receptionist' },
     { name: 'Medical Records', path: '/medical-records', icon: '📋', roles: 'Admin,Doctor' },
     { name: 'Prescriptions', path: '/prescriptions', icon: '💊', roles: 'Admin,Doctor' },
+    { name: 'User Management', path: '/users', icon: '👤', roles: 'Admin' },
   ];
 
   const visibleMenuItems = allMenuItems.filter((item) => hasRole(item.roles));

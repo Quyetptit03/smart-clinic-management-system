@@ -4,10 +4,10 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using ERMSystem.Application.DTOs;
 using ERMSystem.Application.Interfaces;
+using ERMSystem.Application.Options;
 using ERMSystem.Domain.Entities;
 
 namespace ERMSystem.Infrastructure.Services
@@ -15,12 +15,12 @@ namespace ERMSystem.Infrastructure.Services
     public class AuthService : IAuthService
     {
         private readonly IUserRepository _userRepository;
-        private readonly IConfiguration _configuration;
+        private readonly JwtSettings _jwtSettings;
 
-        public AuthService(IUserRepository userRepository, IConfiguration configuration)
+        public AuthService(IUserRepository userRepository, JwtSettings jwtSettings)
         {
             _userRepository = userRepository;
-            _configuration = configuration;
+            _jwtSettings = jwtSettings;
         }
 
         public async Task<AuthResponseDto> RegisterAsync(RegisterDto registerDto)
@@ -35,11 +35,13 @@ namespace ERMSystem.Infrastructure.Services
                 Id = Guid.NewGuid(),
                 Username = username,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
-                Role = AppRole.Receptionist
+                Role = AppRole.Receptionist,
+                IsLocked = false,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             await _userRepository.AddAsync(user);
-
             return BuildAuthResponse(user);
         }
 
@@ -58,11 +60,13 @@ namespace ERMSystem.Infrastructure.Services
                 Id = Guid.NewGuid(),
                 Username = username,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(createUserDto.Password),
-                Role = createUserDto.Role
+                Role = createUserDto.Role,
+                IsLocked = false,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             await _userRepository.AddAsync(user);
-
             return BuildAuthResponse(user);
         }
 
@@ -72,13 +76,15 @@ namespace ERMSystem.Infrastructure.Services
             if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
                 throw new UnauthorizedAccessException("Invalid username or password.");
 
+            if (user.IsLocked)
+                throw new UnauthorizedAccessException("Your account has been locked. Contact an administrator.");
+
             return BuildAuthResponse(user);
         }
 
         private AuthResponseDto BuildAuthResponse(AppUser user)
         {
-            var expiryMinutes = int.Parse(_configuration["Jwt:ExpiryMinutes"] ?? "60");
-            var expiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes);
+            var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes);
             var token = GenerateJwtToken(user, expiresAt);
 
             return new AuthResponseDto
@@ -92,8 +98,7 @@ namespace ERMSystem.Infrastructure.Services
 
         private string GenerateJwtToken(AppUser user, DateTime expiresAt)
         {
-            var key = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var claims = new List<Claim>
@@ -104,8 +109,8 @@ namespace ERMSystem.Infrastructure.Services
             };
 
             var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
+                issuer: _jwtSettings.Issuer,
+                audience: _jwtSettings.Audience,
                 claims: claims,
                 expires: expiresAt,
                 signingCredentials: credentials);

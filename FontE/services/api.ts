@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const isAuthRequest = (url: string) =>
-  url.includes('/Auth/login') || url.includes('/Auth/register');
+  url.includes('/auth/login') || url.includes('/auth/register');
 
 const resolveApiBaseUrl = (): string => {
   const configured = process.env.NEXT_PUBLIC_API_URL;

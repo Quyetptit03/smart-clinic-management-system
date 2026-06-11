@@ -1,4 +1,5 @@
 using ERMSystem.Application.Interfaces;
+using ERMSystem.Application.Options;
 using ERMSystem.Application.Services;
 using ERMSystem.Infrastructure.Repositories;
 using ERMSystem.Infrastructure.Services;
@@ -14,9 +15,48 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ERMSystem.Infrastructure.Data.ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// ── JWT Authentication ──────────────────────────────────────────────────────
-var jwtKey = builder.Configuration["Jwt:Key"]!;
+// ── JWT Configuration ─────────────────────────────────────────────────────
+// All JWT settings come from environment variables or .NET User Secrets.
+// JwtSettings is registered as a singleton so AuthService and middleware share the same resolved values.
+var jwtKey = builder.Configuration["Jwt:Key"];
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "ERMSystem";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "ERMSystemUsers";
+var jwtExpiryMinutes = int.TryParse(builder.Configuration["Jwt:ExpiryMinutes"], out var m) ? m : 60;
 
+if (builder.Environment.IsDevelopment())
+{
+    if (string.IsNullOrWhiteSpace(jwtKey))
+    {
+        jwtKey = "DEV_ONLY_FALLBACK_KEY_NOT_FOR_PRODUCTION_2026_32c";
+        Console.WriteLine("[WARN] Jwt:Key is not configured. Using a DEV_ONLY_FALLBACK_KEY. " +
+                          "Run 'dotnet user-secrets set Jwt:Key <your-secret>' in BackE/ERMSystem.API to fix this.");
+    }
+}
+else
+{
+    if (string.IsNullOrWhiteSpace(jwtKey))
+    {
+        throw new InvalidOperationException(
+            "JWT signing key is not configured. " +
+            "Set the Jwt__Key environment variable (or use .NET User Secrets in Development) before starting the application.");
+    }
+}
+
+var jwtSettings = new JwtSettings
+{
+    Key = jwtKey,
+    Issuer = jwtIssuer,
+    Audience = jwtAudience,
+    ExpiryMinutes = jwtExpiryMinutes
+};
+builder.Services.AddSingleton(jwtSettings);
+
+Console.WriteLine($"[JWT] Issuer   : {jwtSettings.Issuer}");
+Console.WriteLine($"[JWT] Audience : {jwtSettings.Audience}");
+Console.WriteLine($"[JWT] Key set  : True (length: {jwtSettings.Key.Length})");
+Console.WriteLine($"[JWT] Expiry   : {jwtSettings.ExpiryMinutes} min");
+
+// ── JWT Authentication ──────────────────────────────────────────────────────
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -26,9 +66,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key))
         };
     });
 
@@ -55,6 +95,7 @@ builder.Services.AddOpenApi();
 // ── DI – Auth ───────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 // ── DI – Patient ────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IPatientRepository, PatientRepository>();
