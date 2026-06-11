@@ -24,6 +24,7 @@ namespace ERMSystem.API.Controllers
 
         // GET: api/medicines
         [HttpGet]
+        [Authorize(Roles = "Admin,Doctor,Receptionist")]
         public async Task<IActionResult> GetAllMedicines([FromQuery] PaginationRequest request, CancellationToken ct)
         {
             var result = await _medicineService.GetAllMedicinesAsync(request, ct);
@@ -32,6 +33,7 @@ namespace ERMSystem.API.Controllers
 
         // GET: api/medicines/{id}
         [HttpGet("{id}")]
+        [Authorize(Roles = "Admin,Doctor,Receptionist")]
         public async Task<IActionResult> GetMedicineById(Guid id, CancellationToken ct)
         {
             var medicine = await _medicineService.GetMedicineByIdAsync(id, ct);
@@ -42,6 +44,7 @@ namespace ERMSystem.API.Controllers
 
         // POST: api/medicines
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateMedicine([FromBody] CreateMedicineDto createMedicineDto, CancellationToken ct)
         {
             if (!ModelState.IsValid)
@@ -53,6 +56,7 @@ namespace ERMSystem.API.Controllers
 
         // PUT: api/medicines/{id}
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateMedicine(Guid id, [FromBody] UpdateMedicineDto updateMedicineDto, CancellationToken ct)
         {
             if (!ModelState.IsValid)
@@ -72,6 +76,7 @@ namespace ERMSystem.API.Controllers
 
         // DELETE: api/medicines/{id}
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteMedicine(Guid id, CancellationToken ct)
         {
             try

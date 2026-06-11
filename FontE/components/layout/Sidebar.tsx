@@ -4,14 +4,17 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 
 export function Sidebar() {
-  const { logout } = useAuth();
-  const menuItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: '📊' },
-    { name: 'Patients', path: '/patients', icon: '👥' },
-    { name: 'Appointments', path: '/appointments', icon: '📅' },
-    { name: 'Medical Records', path: '/medical-records', icon: '📋' },
-    { name: 'Prescriptions', path: '/prescriptions', icon: '💊' },
+  const { logout, hasRole } = useAuth();
+
+  const allMenuItems = [
+    { name: 'Dashboard', path: '/dashboard', icon: '📊', roles: 'Admin,Doctor,Receptionist' },
+    { name: 'Patients', path: '/patients', icon: '👥', roles: 'Admin,Doctor,Receptionist' },
+    { name: 'Appointments', path: '/appointments', icon: '📅', roles: 'Admin,Doctor,Receptionist' },
+    { name: 'Medical Records', path: '/medical-records', icon: '📋', roles: 'Admin,Doctor' },
+    { name: 'Prescriptions', path: '/prescriptions', icon: '💊', roles: 'Admin,Doctor' },
   ];
+
+  const visibleMenuItems = allMenuItems.filter((item) => hasRole(item.roles));
 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 h-screen fixed left-0 top-0 flex flex-col shadow-sm z-20">
@@ -21,7 +24,7 @@ export function Sidebar() {
         </h1>
       </div>
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-        {menuItems.map((item) => (
+        {visibleMenuItems.map((item) => (
           <Link
             key={item.path}
             href={item.path}

@@ -28,6 +28,7 @@ namespace ERMSystem.API.Controllers
 
         // GET: api/prescriptions
         [HttpGet]
+        [Authorize(Roles = "Admin,Doctor,Receptionist")]
         public async Task<IActionResult> GetAllPrescriptions([FromQuery] PaginationRequest request, CancellationToken ct)
         {
             var result = await _prescriptionService.GetAllPrescriptionsAsync(request, ct);
@@ -36,6 +37,7 @@ namespace ERMSystem.API.Controllers
 
         // GET: api/prescriptions/{id}
         [HttpGet("{id}")]
+        [Authorize(Roles = "Admin,Doctor,Receptionist")]
         public async Task<IActionResult> GetPrescriptionById(Guid id, CancellationToken ct)
         {
             var prescription = await _prescriptionService.GetPrescriptionByIdAsync(id, ct);
@@ -46,6 +48,7 @@ namespace ERMSystem.API.Controllers
 
         // GET: api/prescriptions/by-medicalrecord/{medicalRecordId}
         [HttpGet("by-medicalrecord/{medicalRecordId}")]
+        [Authorize(Roles = "Admin,Doctor,Receptionist")]
         public async Task<IActionResult> GetByMedicalRecord(Guid medicalRecordId, CancellationToken ct)
         {
             var prescription = await _prescriptionService.GetPrescriptionByMedicalRecordIdAsync(medicalRecordId, ct);
@@ -56,6 +59,7 @@ namespace ERMSystem.API.Controllers
 
         // POST: api/prescriptions
         [HttpPost]
+        [Authorize(Roles = "Admin,Doctor")]
         public async Task<IActionResult> CreatePrescription([FromBody] CreatePrescriptionDto createPrescriptionDto, CancellationToken ct)
         {
             if (!ModelState.IsValid)
@@ -78,6 +82,7 @@ namespace ERMSystem.API.Controllers
 
         // DELETE: api/prescriptions/{id}
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeletePrescription(Guid id, CancellationToken ct)
         {
             try
@@ -94,6 +99,7 @@ namespace ERMSystem.API.Controllers
 
         // POST: api/prescriptions/{id}/items
         [HttpPost("{id}/items")]
+        [Authorize(Roles = "Admin,Doctor")]
         public async Task<IActionResult> AddItem(Guid id, [FromBody] AddPrescriptionItemDto addPrescriptionItemDto, CancellationToken ct)
         {
             if (!ModelState.IsValid)
@@ -112,6 +118,7 @@ namespace ERMSystem.API.Controllers
 
         // DELETE: api/prescriptions/{id}/items/{itemId}
         [HttpDelete("{id}/items/{itemId}")]
+        [Authorize(Roles = "Admin,Doctor")]
         public async Task<IActionResult> RemoveItem(Guid id, Guid itemId, CancellationToken ct)
         {
             try

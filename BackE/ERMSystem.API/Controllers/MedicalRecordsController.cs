@@ -24,6 +24,7 @@ namespace ERMSystem.API.Controllers
 
         // GET: api/medicalrecords
         [HttpGet]
+        [Authorize(Roles = "Admin,Doctor,Receptionist")]
         public async Task<IActionResult> GetAllMedicalRecords([FromQuery] PaginationRequest request, CancellationToken ct)
         {
             var result = await _medicalRecordService.GetAllMedicalRecordsAsync(request, ct);
@@ -32,6 +33,7 @@ namespace ERMSystem.API.Controllers
 
         // GET: api/medicalrecords/{id}
         [HttpGet("{id}")]
+        [Authorize(Roles = "Admin,Doctor,Receptionist")]
         public async Task<IActionResult> GetMedicalRecordById(Guid id, CancellationToken ct)
         {
             var record = await _medicalRecordService.GetMedicalRecordByIdAsync(id, ct);
@@ -42,6 +44,7 @@ namespace ERMSystem.API.Controllers
 
         // GET: api/medicalrecords/by-appointment/{appointmentId}
         [HttpGet("by-appointment/{appointmentId}")]
+        [Authorize(Roles = "Admin,Doctor,Receptionist")]
         public async Task<IActionResult> GetByAppointmentId(Guid appointmentId, CancellationToken ct)
         {
             var record = await _medicalRecordService.GetMedicalRecordByAppointmentIdAsync(appointmentId, ct);
@@ -52,6 +55,7 @@ namespace ERMSystem.API.Controllers
 
         // POST: api/medicalrecords
         [HttpPost]
+        [Authorize(Roles = "Admin,Doctor")]
         public async Task<IActionResult> CreateMedicalRecord([FromBody] CreateMedicalRecordDto createMedicalRecordDto, CancellationToken ct)
         {
             if (!ModelState.IsValid)
@@ -74,6 +78,7 @@ namespace ERMSystem.API.Controllers
 
         // PUT: api/medicalrecords/{id}
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin,Doctor")]
         public async Task<IActionResult> UpdateMedicalRecord(Guid id, [FromBody] UpdateMedicalRecordDto updateMedicalRecordDto, CancellationToken ct)
         {
             if (!ModelState.IsValid)
@@ -93,6 +98,7 @@ namespace ERMSystem.API.Controllers
 
         // DELETE: api/medicalrecords/{id}
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteMedicalRecord(Guid id, CancellationToken ct)
         {
             try
