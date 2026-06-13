@@ -6,4 +6,5 @@ public class JwtSettings
     public string Issuer { get; set; } = "ERMSystem";
     public string Audience { get; set; } = "ERMSystemUsers";
     public int ExpiryMinutes { get; set; } = 60;
+    public int RefreshTokenExpiryDays { get; set; } = 14;
 }

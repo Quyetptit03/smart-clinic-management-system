@@ -91,5 +91,41 @@ namespace ERMSystem.Infrastructure.Repositories
                 await _context.SaveChangesAsync();
             }
         }
+
+        public async Task<RefreshToken?> GetRefreshTokenAsync(string token)
+        {
+            return await _context.RefreshTokens
+                .Include(rt => rt.User)
+                .FirstOrDefaultAsync(rt => rt.Token == token);
+        }
+
+        public async Task AddRefreshTokenAsync(RefreshToken token)
+        {
+            await _context.RefreshTokens.AddAsync(token);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateRefreshTokenAsync(RefreshToken token)
+        {
+            _context.RefreshTokens.Update(token);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task RevokeAllUserTokensAsync(Guid userId)
+        {
+            var tokens = await _context.RefreshTokens
+                .Where(rt => rt.UserId == userId && rt.RevokedAt == null)
+                .ToListAsync();
+
+            foreach (var token in tokens)
+            {
+                token.RevokedAt = DateTime.UtcNow;
+            }
+
+            if (tokens.Count > 0)
+            {
+                await _context.SaveChangesAsync();
+            }
+        }
     }
 }

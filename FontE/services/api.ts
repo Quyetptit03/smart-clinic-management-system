@@ -1,7 +1,10 @@
-import axios from 'axios';
+import axios, { AxiosError, AxiosRequestConfig } from 'axios';
+import { authService } from './authService';
 
 const isAuthRequest = (url: string) =>
-  url.includes('/auth/login') || url.includes('/auth/register');
+  url.includes('/auth/login') ||
+  url.includes('/auth/register') ||
+  url.includes('/auth/refresh');
 
 const resolveApiBaseUrl = (): string => {
   const configured = process.env.NEXT_PUBLIC_API_URL;
@@ -14,23 +17,33 @@ const resolveApiBaseUrl = (): string => {
   return trimmed;
 };
 
-// Use the Next.js /api proxy in dev; override with NEXT_PUBLIC_API_URL in production.
 const api = axios.create({
   baseURL: resolveApiBaseUrl(),
   timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor to attach token
+// Track in-flight refresh requests so concurrent 401s share one refresh call.
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
+
+const subscribeTokenRefresh = (cb: (token: string) => void) => {
+  refreshSubscribers.push(cb);
+};
+
+const onRefreshed = (token: string) => {
+  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+};
+
+// Request interceptor: attach access token, skip auth endpoints.
 api.interceptors.request.use(
   (config) => {
     const requestUrl = typeof config.url === 'string' ? config.url : '';
 
-    if (typeof window !== 'undefined' && !isAuthRequest(requestUrl)) {
-      const token = localStorage.getItem('emr_auth_token');
-      if (token && config.headers) {
+    if (!isAuthRequest(requestUrl)) {
+      const token = authService.getAccessToken();
+      if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
@@ -39,20 +52,69 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor to handle token expiration/errors
+// Response interceptor: handle 401 with automatic token refresh + rotation.
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    const originalRequest = error.config ?? {};
-    const requestUrl = typeof originalRequest.url === 'string' ? originalRequest.url : '';
+  async (error: AxiosError) => {
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    const requestUrl = originalRequest?.url ?? '';
 
-    if (error.response?.status === 401 && !isAuthRequest(requestUrl)) {
-      localStorage.removeItem('emr_auth_token')
-      window.location.href = "/login"
+    // Guard: skip refresh for auth endpoints, already retried, or network error.
+    if (
+      !originalRequest ||
+      isAuthRequest(requestUrl) ||
+      originalRequest._retry ||
+      !error.response
+    ) {
+      // If 401 on a non-auth endpoint and we have no refresh token, redirect to login.
+      if (error.response?.status === 401 && !authService.getRefreshToken()) {
+        authService.clearTokens();
+        window.location.href = '/login';
+      }
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error)
+    // Only attempt refresh on 401.
+    if (error.response?.status !== 401) {
+      return Promise.reject(error);
+    }
+
+    if (!isRefreshing) {
+      isRefreshing = true;
+      originalRequest._retry = true;
+
+      try {
+        const newTokens = await authService.refresh();
+        onRefreshed(newTokens.accessToken);
+
+        // Retry the original request with the new token.
+        originalRequest.headers = {
+          ...originalRequest.headers,
+          Authorization: `Bearer ${newTokens.accessToken}`,
+        };
+        isRefreshing = false;
+        return api(originalRequest);
+      } catch (refreshError) {
+        isRefreshing = false;
+        refreshSubscribers = [];
+        authService.clearTokens();
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+
+    // Queue this request until refresh completes.
+    return new Promise<string>((resolve) => {
+      subscribeTokenRefresh((newToken: string) => {
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        }
+        resolve(newToken);
+      });
+    })
+      .then(() => api(originalRequest))
+      .catch((err) => Promise.reject(err));
   }
-)
+);
 
 export default api;

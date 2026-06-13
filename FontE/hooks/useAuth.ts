@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/services/authService';
 import toast from 'react-hot-toast';
@@ -42,16 +42,19 @@ export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const token = typeof window !== 'undefined' ? authService.getToken() : null;
-  const decodedToken = useMemo(() => decodeTokenPayload(token), [token]);
+  const accessToken = typeof window !== 'undefined' ? authService.getAccessToken() : null;
+  const decodedToken = useMemo(() => decodeTokenPayload(accessToken), [accessToken]);
   const role = decodedToken.role ?? '';
   const username = decodedToken.username ?? '';
 
-  const hasRole = (requiredRole: string): boolean => {
-    if (!role) return false;
-    const allowed = requiredRole.split(',').map((r) => r.trim());
-    return allowed.includes(role);
-  };
+  const hasRole = useCallback(
+    (requiredRole: string): boolean => {
+      if (!role) return false;
+      const allowed = requiredRole.split(',').map((r) => r.trim());
+      return allowed.includes(role);
+    },
+    [role]
+  );
 
   useEffect(() => {
     const checkAuth = () => {
@@ -64,14 +67,14 @@ export function useAuth() {
 
   const login = async (username: string, password: string, remember: boolean = false) => {
     try {
-      await authService.login(username, password);
+      const response = await authService.login(username, password);
       setIsAuthenticated(true);
       toast.success('Login successful!');
 
       if (remember) {
-         localStorage.setItem('emr_remember_me', 'true');
+        localStorage.setItem('emr_remember_me', 'true');
       } else {
-         localStorage.removeItem('emr_remember_me');
+        localStorage.removeItem('emr_remember_me');
       }
 
       router.push('/dashboard');
@@ -88,8 +91,9 @@ export function useAuth() {
   };
 
   const logout = () => {
-    authService.logout();
+    authService.logout(); // clears tokens + calls revoke endpoint
     setIsAuthenticated(false);
+    localStorage.removeItem('emr_remember_me');
     toast.success('Logged out successfully');
     router.push('/login');
   };
