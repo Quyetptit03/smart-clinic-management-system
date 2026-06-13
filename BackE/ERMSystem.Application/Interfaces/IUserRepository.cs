@@ -16,5 +16,9 @@ namespace ERMSystem.Application.Interfaces
         Task DeleteAsync(Guid id);
         Task LockAsync(Guid id);
         Task UnlockAsync(Guid id);
+        Task<RefreshToken?> GetRefreshTokenAsync(string token);
+        Task AddRefreshTokenAsync(RefreshToken token);
+        Task UpdateRefreshTokenAsync(RefreshToken token);
+        Task RevokeAllUserTokensAsync(Guid userId);
     }
 }

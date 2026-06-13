@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Mvc;
 using ERMSystem.Application.DTOs;
 using ERMSystem.Application.Interfaces;
@@ -19,7 +20,6 @@ namespace ERMSystem.API.Controllers
         }
 
         // POST: api/auth/register
-        // Public self-registration — always creates Receptionist accounts only.
         [HttpPost("register")]
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
@@ -34,11 +34,11 @@ namespace ERMSystem.API.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                return Conflict(ex.Message);
+                return Conflict(new { message = ex.Message });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -62,7 +62,6 @@ namespace ERMSystem.API.Controllers
         }
 
         // POST: api/auth/create-user
-        // Admin-only endpoint for creating users with explicit roles.
         [HttpPost("create-user")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateUser([FromBody] CreateUserDto createUserDto)
@@ -77,12 +76,47 @@ namespace ERMSystem.API.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                return Conflict(ex.Message);
+                return Conflict(new { message = ex.Message });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new { message = ex.Message });
             }
+        }
+
+        // POST: api/auth/refresh
+        [HttpPost("refresh")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshRequestDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var response = await _authService.RefreshTokenAsync(request);
+                return Ok(response);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (SecurityTokenException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+        }
+
+        // POST: api/auth/revoke
+        [HttpPost("revoke")]
+        [Authorize]
+        public async Task<IActionResult> RevokeRefreshToken([FromBody] RevokeTokenDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.RefreshToken))
+                return BadRequest(new { message = "Refresh token is required." });
+
+            await _authService.RevokeRefreshTokenAsync(dto.RefreshToken);
+            return Ok(new { message = "Refresh token revoked." });
         }
     }
 }

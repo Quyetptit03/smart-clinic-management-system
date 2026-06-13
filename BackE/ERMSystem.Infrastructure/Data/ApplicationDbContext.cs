@@ -17,6 +17,7 @@ namespace ERMSystem.Infrastructure.Data
         public DbSet<Medicine> Medicines { get; set; } = null!;
         public DbSet<PrescriptionItem> PrescriptionItems { get; set; } = null!;
         public DbSet<AppUser> AppUsers { get; set; } = null!;
+        public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -72,6 +73,18 @@ namespace ERMSystem.Infrastructure.Data
             // Username must be unique.
             modelBuilder.Entity<AppUser>()
                 .HasIndex(u => u.Username)
+                .IsUnique();
+
+            // A user has many refresh tokens.
+            modelBuilder.Entity<RefreshToken>()
+                .HasOne(rt => rt.User)
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(rt => rt.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Refresh token token must be unique.
+            modelBuilder.Entity<RefreshToken>()
+                .HasIndex(rt => rt.Token)
                 .IsUnique();
         }
     }

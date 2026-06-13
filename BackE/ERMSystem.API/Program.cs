@@ -22,6 +22,7 @@ var jwtKey = builder.Configuration["Jwt:Key"];
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "ERMSystem";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "ERMSystemUsers";
 var jwtExpiryMinutes = int.TryParse(builder.Configuration["Jwt:ExpiryMinutes"], out var m) ? m : 60;
+var refreshTokenExpiryDays = int.TryParse(builder.Configuration["Jwt:RefreshTokenExpiryDays"], out var d) ? d : 14;
 
 if (builder.Environment.IsDevelopment())
 {
@@ -47,7 +48,8 @@ var jwtSettings = new JwtSettings
     Key = jwtKey,
     Issuer = jwtIssuer,
     Audience = jwtAudience,
-    ExpiryMinutes = jwtExpiryMinutes
+    ExpiryMinutes = jwtExpiryMinutes,
+    RefreshTokenExpiryDays = refreshTokenExpiryDays
 };
 builder.Services.AddSingleton(jwtSettings);
 
@@ -55,6 +57,7 @@ Console.WriteLine($"[JWT] Issuer   : {jwtSettings.Issuer}");
 Console.WriteLine($"[JWT] Audience : {jwtSettings.Audience}");
 Console.WriteLine($"[JWT] Key set  : True (length: {jwtSettings.Key.Length})");
 Console.WriteLine($"[JWT] Expiry   : {jwtSettings.ExpiryMinutes} min");
+Console.WriteLine($"[JWT] Refresh  : {jwtSettings.RefreshTokenExpiryDays} days");
 
 // ── JWT Authentication ──────────────────────────────────────────────────────
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

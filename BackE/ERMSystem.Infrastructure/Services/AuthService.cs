@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.IdentityModel.Tokens;
@@ -42,7 +43,25 @@ namespace ERMSystem.Infrastructure.Services
             };
 
             await _userRepository.AddAsync(user);
-            return BuildAuthResponse(user);
+
+            var refreshToken = await CreateRefreshTokenAsync(user);
+            return BuildAuthResponse(user, refreshToken.Token);
+        }
+
+        public async Task<AuthResponseDto> LoginAsync(LoginDto loginDto)
+        {
+            var user = await _userRepository.GetByUsernameAsync(loginDto.Username.Trim());
+            if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
+                throw new UnauthorizedAccessException("Invalid username or password.");
+
+            if (user.IsLocked)
+                throw new UnauthorizedAccessException("Your account has been locked. Contact an administrator.");
+
+            // Revoke any existing tokens (single-device session) to enforce clean rotation on re-login.
+            await _userRepository.RevokeAllUserTokensAsync(user.Id);
+
+            var refreshToken = await CreateRefreshTokenAsync(user);
+            return BuildAuthResponse(user, refreshToken.Token);
         }
 
         public async Task<AuthResponseDto> CreateUserAsync(CreateUserDto createUserDto)
@@ -67,37 +86,102 @@ namespace ERMSystem.Infrastructure.Services
             };
 
             await _userRepository.AddAsync(user);
-            return BuildAuthResponse(user);
+
+            var refreshToken = await CreateRefreshTokenAsync(user);
+            return BuildAuthResponse(user, refreshToken.Token);
         }
 
-        public async Task<AuthResponseDto> LoginAsync(LoginDto loginDto)
+        public async Task<RefreshResponseDto> RefreshTokenAsync(RefreshRequestDto request)
         {
-            var user = await _userRepository.GetByUsernameAsync(loginDto.Username.Trim());
-            if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
-                throw new UnauthorizedAccessException("Invalid username or password.");
+            // 1. Validate the refresh token exists and is active.
+            var storedToken = await _userRepository.GetRefreshTokenAsync(request.RefreshToken);
+            if (storedToken == null)
+                throw new SecurityTokenException("Invalid refresh token.");
 
+            // 2. Check token is not expired.
+            if (storedToken.IsExpired)
+                throw new SecurityTokenException("Refresh token has expired. Please log in again.");
+
+            // 3. Check token is not revoked (prevents reuse attacks).
+            if (storedToken.IsRevoked)
+                throw new SecurityTokenException("Refresh token has been revoked. Please log in again.");
+
+            var user = storedToken.User;
+
+            // 4. Validate the user still exists and is not locked.
+            if (user == null)
+                throw new UnauthorizedAccessException("User not found.");
             if (user.IsLocked)
                 throw new UnauthorizedAccessException("Your account has been locked. Contact an administrator.");
 
-            return BuildAuthResponse(user);
-        }
+            // 5. ROTATION: revoke the old token so it cannot be reused.
+            storedToken.RevokedAt = DateTime.UtcNow;
+            storedToken.ReplacedByToken = request.RefreshToken; // record rotation chain
+            await _userRepository.UpdateRefreshTokenAsync(storedToken);
 
-        private AuthResponseDto BuildAuthResponse(AppUser user)
-        {
+            // 6. ISSUE: generate a brand-new pair.
+            var newAccessToken = GenerateJwtToken(user);
             var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes);
-            var token = GenerateJwtToken(user, expiresAt);
+            var newRefreshToken = await CreateRefreshTokenAsync(user);
 
-            return new AuthResponseDto
+            return new RefreshResponseDto
             {
-                Token = token,
+                AccessToken = newAccessToken,
+                RefreshToken = newRefreshToken.Token,
                 Username = user.Username,
                 Role = user.Role,
                 ExpiresAt = expiresAt
             };
         }
 
-        private string GenerateJwtToken(AppUser user, DateTime expiresAt)
+        public async Task RevokeRefreshTokenAsync(string refreshToken)
         {
+            var storedToken = await _userRepository.GetRefreshTokenAsync(refreshToken);
+            if (storedToken == null) return; // no-op if already gone
+
+            storedToken.RevokedAt = DateTime.UtcNow;
+            await _userRepository.UpdateRefreshTokenAsync(storedToken);
+        }
+
+        private async Task<RefreshToken> CreateRefreshTokenAsync(AppUser user)
+        {
+            var randomBytes = new byte[CryptoRandomByteCount];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomBytes);
+            }
+
+            var token = new RefreshToken
+            {
+                Id = Guid.NewGuid(),
+                Token = Convert.ToBase64String(randomBytes),
+                UserId = user.Id,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryDays)
+            };
+
+            await _userRepository.AddRefreshTokenAsync(token);
+            return token;
+        }
+
+        private AuthResponseDto BuildAuthResponse(AppUser user, string refreshToken)
+        {
+            var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes);
+            var token = GenerateJwtToken(user);
+
+            return new AuthResponseDto
+            {
+                Token = token,
+                RefreshToken = refreshToken,
+                Username = user.Username,
+                Role = user.Role,
+                ExpiresAt = expiresAt
+            };
+        }
+
+        private string GenerateJwtToken(AppUser user)
+        {
+            var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes);
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -117,5 +201,7 @@ namespace ERMSystem.Infrastructure.Services
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+
+        private const int CryptoRandomByteCount = 64;
     }
 }
